@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แจ้งยอดชำระงานตัดต่อ</title>
+<style>
+  body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f9f9f9; }
+  .container { max-width: 400px; margin:20px auto; background:#fff; padding:20px; border-radius:10px; }
+  h1{ text-align:center; font-size:28px; margin-bottom:20px; }
+  label{display:block;margin-top:10px;}
+  input, select{width:100%;padding:8px;margin-top:5px;}
+  button{width:100%;padding:10px;margin-top:15px;background:#007BFF;color:white;border:none;border-radius:5px;cursor:pointer;}
+  button:hover{background:#0056b3;}
+  .invoice{margin-top:20px;padding:10px;border:1px solid #ddd;background:#f1f1f1;border-radius:5px;}
+  .invoice-row { display:flex; justify-content:space-between; margin-bottom:5px; }
+  .invoice-row span { display:inline-block; }
+  .qr-container { text-align:center; margin-top:15px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>แจ้งยอดชำระ</h1>
+  
+  <label>ความยาวคลิป (นาที:วินาที)</label>
+  <input type="text" id="length" placeholder="ตัวอย่าง 01:30">
+  
+  <label>จำนวนซับภาษา</label>
+  <select id="subtitle">
+    <option value="1">1 ภาษา (ไทย)</option>
+    <option value="2">2 ภาษา (ไทย + อังกฤษ)</option>
+  </select>
+  
+  <label>ทำปกคลิป</label>
+  <select id="cover">
+    <option value="no">ไม่ทำ</option>
+    <option value="yes">ทำปก</option>
+  </select>
+  
+  <label>จำนวนรอบแก้ไข (เกิน 2 รอบคิดรอบละ 50 บาท)</label>
+  <input type="number" id="revisions" min="0" value="0">
+  
+  <label>สถานะชำระเงิน</label>
+  <select id="status">
+    <option value="before">ชำระหลังส่งงาน</option>
+    <option value="after">ชำระแล้ว</option>
+  </select>
+  
+  <button onclick="calculate()">คำนวณราคา</button>
+  <button onclick="downloadPDF()" style="background:#28a745;">ดาวน์โหลด PDF</button>
+  
+  <div class="invoice" id="invoice" style="display:none;"></div>
+</div>
+
+<!-- QRCode.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<script>
+let currentInvoice = '';
+let paymentQRValue = ''; // ใส่ QR Code string ของธนาคารคุณที่นี่
+
+function calculate() {
+  let lengthInput = document.getElementById('length').value;
+  let subtitle = parseInt(document.getElementById('subtitle').value);
+  let cover = document.getElementById('cover').value;
+  let revisions = parseInt(document.getElementById('revisions').value);
+  let status = document.getElementById('status').value;
+  
+  let parts = lengthInput.split(':');
+  let minutes = parseInt(parts[0]) || 0;
+  let seconds = parseInt(parts[1]) || 0;
+  let totalSeconds = minutes*60 + seconds;
+  
+  let price = 0;
+  if(totalSeconds >=1 && totalSeconds <= 59) price=350;
+  else if(totalSeconds >=60 && totalSeconds <=119) price=450;
+  else if(totalSeconds >=120 && totalSeconds <=299) price=700;
+  else if(totalSeconds >=300) price=1200;
+  
+  if(subtitle===2) price+=80;
+  if(cover==='yes') price+=50;
+  if(revisions>2) price+=(revisions-2)*50;
+  
+  currentInvoice = `<div>
+    <div class="invoice-row"><span>ความยาวคลิป</span><span>${lengthInput} นาที</span></div>
+    <div class="invoice-row"><span>ซับภาษา</span><span>${subtitle} ภาษา</span></div>
+    <div class="invoice-row"><span>ทำปกคลิป</span><span>${cover==='yes'?'ใช่':'ไม่'}</span></div>
+    <div class="invoice-row"><span>รอบแก้ไข</span><span>${revisions} รอบ</span></div>
+    <div class="invoice-row"><span>สถานะชำระเงิน</span><span>${status==='after'?'ชำระแล้ว':'ชำระหลังส่งงาน'}</span></div>
+    <div class="invoice-row"><strong>รวมเป็นเงิน</strong><strong>${price} บาท</strong></div>
+    <div class="qr-container" id="qrcode"></div>
+  </div>`;
+  
+  let invoiceDiv = document.getElementById('invoice');
+  invoiceDiv.innerHTML = currentInvoice;
+  invoiceDiv.style.display='block';
+  
+  // สร้าง QR Code
+  paymentQRValue = prompt('ใส่ข้อความ QR Code สำหรับชำระเงิน เช่น PromptPay หรือบัญชีธนาคาร:',''); 
+  if(paymentQRValue){
+    new QRCode(document.getElementById("qrcode"), { text: paymentQRValue, width:120, height:120 });
+  }
+}
+
+function downloadPDF() {
+  if(currentInvoice===''){
+    alert('กรุณาคำนวณราคาใบสรุปก่อนดาวน์โหลด');
+    return;
+  }
+  let element = document.createElement('div');
+  element.innerHTML = `<h1 style="text-align:center;">แจ้งยอดชำระ</h1>` + currentInvoice;
+  html2pdf()
+    .set({ margin: 10, filename: 'ใบสรุปการชำระเงิน.pdf', html2canvas: { scale: 2 } })
+    .from(element)
+    .save();
+}
+</script>
+</body>
+</html>
