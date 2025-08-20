@@ -12,11 +12,13 @@ label{display:block;margin-top:10px; font-weight:bold; color:#555;}
 input, select{width:100%;padding:8px;margin-top:5px; border-radius:5px; border:1px solid #ccc;}
 button{width:100%;padding:10px;margin-top:15px;background:#007BFF;color:white;border:none;border-radius:5px;cursor:pointer; font-size:16px;}
 button:hover{background:#0056b3;}
-.invoice{margin-top:20px;padding:15px;border:1px solid #ddd;background:#fff;border-radius:10px; box-shadow:0 0 5px rgba(0,0,0,0.1);}
+.invoice{margin-top:20px;padding:15px;border:1px solid #ddd;background:#fff;border-radius:10px; box-shadow:0 0 5px rgba(0,0,0,0.1); position: relative;}
 .invoice-row { display:flex; justify-content:space-between; margin-bottom:5px; font-size:16px; }
 .invoice-row strong { font-weight:bold; }
 .qr-container { text-align:center; margin-top:20px; }
 .qr-text { text-align:center; font-weight:bold; margin-top:5px; font-size:16px; color:#333; }
+/* ยอดชำระตัวใหญ่ซ้ายบน */
+.top-left-title { position: absolute; top:10px; left:10px; font-size:20px; font-weight:bold; color:#007BFF; }
 </style>
 </head>
 <body>
@@ -60,7 +62,7 @@ button:hover{background:#0056b3;}
 
 <script>
 let currentInvoice = '';
-let paymentQRValue = ''; // ใส่ข้อความ QR Code ของคุณตรงนี้ เช่น PromptPay หรือบัญชีธนาคาร
+let paymentQRValue = '';
 
 function calculate() {
   let lengthInput = document.getElementById('length').value;
@@ -74,20 +76,22 @@ function calculate() {
   let seconds = parseInt(parts[1]) || 0;
   let totalSeconds = minutes*60 + seconds;
 
+  // แก้ปัญหา 00:01-00:59 เริ่ม 350
   let price = 0;
-  if(totalSeconds >=1 && totalSeconds <= 59) price=350;
-  else if(totalSeconds >=60 && totalSeconds <=119) price=450;
-  else if(totalSeconds >=120 && totalSeconds <=299) price=700;
-  else if(totalSeconds >=300) price=1200;
+  if(totalSeconds >=1 && totalSeconds <=59) price = 350;
+  else if(totalSeconds >=60 && totalSeconds <=119) price = 450;
+  else if(totalSeconds >=120 && totalSeconds <=299) price = 700;
+  else if(totalSeconds >=300) price = 1200;
 
   if(subtitle===2) price+=80;
   if(cover==='yes') price+=50;
   if(revisions>2) price+=(revisions-2)*50;
 
-  // ตัวอย่าง: ใส่ QR Code แบบคงที่ตรงนี้ แทน prompt
-  paymentQRValue = 'ใส่ข้อความ QR ของคุณตรงนี้'; 
+  // กรอก PromptPay/QR ตอนคำนวณ
+  paymentQRValue = prompt('ใส่ข้อความ QR Code สำหรับชำระเงิน เช่น PromptPay หรือบัญชีธนาคาร:',''); 
 
   currentInvoice = `<div>
+    <div class="top-left-title">ยอดชำระ</div>
     <div class="invoice-row"><span>ความยาวคลิป</span><span>${lengthInput} นาที</span></div>
     <div class="invoice-row"><span>ซับภาษา</span><span>${subtitle} ภาษา</span></div>
     <div class="invoice-row"><span>ทำปกคลิป</span><span>${cover==='yes'?'ใช่':'ไม่'}</span></div>
